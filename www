@@ -1,0 +1,128 @@
+#!/usr/bin/env node
+
+/**
+ * Module dependencies.
+ */
+const app = require('../app');
+const sensorApp = require('../sensorapp')//
+const debug = require('debug')('myapp:server');
+const http = require('http');
+const socket=  require('../golbalvalue/socket');
+
+/**
+ * Get port from environment and store in Express.
+ */
+
+const port = normalizePort(process.env.PORT || '3000');
+const sensorPort = normalizePort(process.env.PORT || '3001' );//
+app.set('port', port);
+sensorApp.set('port', sensorPort);//
+
+/**
+ * Create HTTP server.
+ */
+const server = http.createServer(app);
+const sensorServer = http.createServer(sensorApp);//
+/**
+ * turn on websocket.
+ */
+
+
+let socket_server = null
+var socket_io = null
+async function initialize(){
+  console.log('Initializ working')
+  socket_server = await require('../golbalvalue/socket').initialize(server);
+  server.listen(port);
+  socket_io = require('../golbalvalue/socket').socket_server();
+
+  if(socket_io){
+    console.log('socket io already create')
+    console.log('queue is start checking')
+    const queue = require('../golbalvalue/queue');
+    queue.StartChecking();
+  }else{
+    console.log('socket still not create')
+  }
+  
+  
+}
+
+initialize()
+
+/**
+ * Listen on provided port, on all network interfaces.
+ */
+server.on('error', (error) => {
+  onError(error, port);
+});
+server.on('listening', ()=>onListening(server));
+//
+sensorServer.listen(sensorPort);
+sensorServer.on('error', (error) => {
+  onError(error, sensorPort);
+});
+sensorServer.on('listening', ()=>onListening(sensorServer));
+/**
+ * Normalize a port into a number, string, or false.
+ */
+
+function normalizePort(val) {
+  var port = parseInt(val, 10);
+
+  if (isNaN(port)) {
+    // named pipe
+    return val;
+  }
+
+  if (port >= 0) {
+    // port number
+    return port;
+  }
+
+  return false;
+}
+
+/**
+ * Event listener for HTTP server "error" event.
+ */
+
+function onError(error,port) {
+  console.log("Error on : "+port);
+  if (error.syscall !== 'listen') {
+    throw error;
+  }
+
+  var bind = typeof port === 'string'
+    ? 'Pipe ' + port
+    : 'Port ' + port;
+
+  // handle specific listen errors with friendly messages
+  switch (error.code) {
+    case 'EACCES':
+      console.error(bind + ' requires elevated privileges');
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      console.error(bind + ' is already in use');
+      process.exit(1);
+      break;
+    default:
+      throw error;
+  }
+}
+
+/**
+ * Event listener for HTTP server "listening" event.
+ */
+
+function onListening(server) {
+  var addr = server.address();
+  console.log("Listenging on : "+JSON.stringify(addr));
+  var bind = typeof addr === 'string'
+    ? 'pipe ' + addr
+    : 'port ' + addr.port;
+  debug('Listening on ' + bind);
+
+}
+
